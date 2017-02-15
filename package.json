@@ -6,6 +6,13 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.15.3",
-    "node-line-messaging-api": "^0.12.1"
+    "firebase": "^3.6.9",
+    "gcloud": "^0.37.0",
+    "memecanvas": "^1.0.5",
+    "node-line-messaging-api": "0.12.2",
+    "uuid": "^3.0.1"
+  },
+  "scripts": {
+    "start": "node index.js"
   }
 }
