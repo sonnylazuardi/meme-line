@@ -1,0 +1,11 @@
+{
+  "name": "meme-line",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": {},
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.15.3",
+    "node-line-messaging-api": "^0.12.1"
+  }
+}
