@@ -5,8 +5,6 @@ const fs = require('fs');
 const gcloud = require('google-cloud');
 const uuid = require('uuid');
 
-const db = require('./database')
-
 const ID = `1501426113`
 const SECRET = `f5494121240b9b28455326b598d136cb`
 const TOKEN = `Q8D1JSQxJzrO7dtU+JuJbebMVFx14wNVh+3ragq6uHdZaHMjO/4ekz6/0e/Ii30ZHvyplC9GVeaKFQP5pebnT5I5R6eCFNFDRFfnbhfmTUE7SZFSFFH2SwTk5C8N0KF7cTavOxvfBpWPWQGeudSzXgdB04t89/1O/w1cDnyilFU=`
@@ -30,22 +28,11 @@ const PORT = process.env.PORT || 3002
 
 const bot = new Bot(SECRET, TOKEN, { webhook: { port: PORT, ngrok: false } })
 
-const appRef = db.ref(ID)
-const eventsRef = appRef.child('events')
-const usersRef = appRef.child('users')
-const statusRef = appRef.child('status')
-
 memecanvas.init('./images', '-meme');
 
 bot.on('webhook', w => {
   console.log(`bot listens on port ${w}.`)
-  axios.get('https://ipinfo.io').then(({data}) => statusRef.push({ data })).then(console.log).catch(console.error)
-})
-
-bot.on('events', (e, req) => {
-  Promise.all(e.map(evt => eventsRef.push(evt))).then(() => {
-    console.log('pushed events')
-  })
+  axios.get('https://ipinfo.io').then(({data}) => console.log(data)).catch(console.error)
 })
 
 bot.on('follow', ({replyToken, source}) => {
@@ -109,19 +96,19 @@ bot.on('image', (e) => {
   // });
 });
 
-const getMemeByUser = (sourceId) => {
-  const currentMemeRef = usersRef.ref(`${sourceId}/currentMeme`)
-  return currentMemeRef.once('value')
-    .then((snapshot) => {
-      const currentMeme = snapshot.val()
-      const newMeme = {picture: null, top: null, bottom: null}
-      if (!currentMeme) {
-        return currentMemeRef.push(newMeme).then(() => Promise.reject(newMeme))
-      } else {
-        return Promise.resolve(currentMeme)
-      }
-    })
-}
+// const getMemeByUser = (sourceId) => {
+//   const currentMemeRef = usersRef.ref(`${sourceId}/currentMeme`)
+//   return currentMemeRef.once('value')
+//     .then((snapshot) => {
+//       const currentMeme = snapshot.val()
+//       const newMeme = {picture: null, top: null, bottom: null}
+//       if (!currentMeme) {
+//         return currentMemeRef.push(newMeme).then(() => Promise.reject(newMeme))
+//       } else {
+//         return Promise.resolve(currentMeme)
+//       }
+//     })
+// }
 
 const createMeme = ({ picture, top, bottom }) => {
   const randomName = uuid.v4();
