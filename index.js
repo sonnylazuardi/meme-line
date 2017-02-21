@@ -43,6 +43,10 @@ bot.on('follow', ({replyToken, source}) => {
 })
 
 const saveStateText = (sourceId, field, text) => {
+  axios.post(`${config.databaseURL}/analytics.json`, {
+    userId: sourceId,
+    [field]: text
+  })
   return axios.patch(`${config.databaseURL}/state/${sourceId}.json`, {
     [field]: text
   }).then(({data}) => {
@@ -69,6 +73,10 @@ const checkState = (sourceId) => {
     }
   })
 }
+
+bot.on('event', (event) => {
+  axios.post(`${config.databaseURL}/events.json`, event);
+})
 
 bot.on('text', ({replyToken, source, source: { type }, message: { text }}) => {
   const sourceId = source[`${type}Id`];
@@ -117,6 +125,10 @@ bot.on('image', (e) => {
         })
         .then(replyImage => {
           clearState(sourceId).then(() => {
+            axios.post(`${config.databaseURL}/analytics.json`, {
+              userId: sourceId,
+              memePicture: replyImage
+            });
             msgs
               .addText('Ini dia hasil meme yang berhasil dibuat')
               .addImage(replyImage)
