@@ -2,7 +2,7 @@ const Bot = require('node-line-messaging-api');
 const axios = require('axios');
 const memecanvas = require('memecanvas');
 const fs = require('fs');
-const gcloud = require('gcloud');
+const gcloud = require('google-cloud');
 const uuid = require('uuid');
 
 const db = require('./database')
