@@ -38,77 +38,98 @@ bot.on('webhook', w => {
 bot.on('follow', ({replyToken, source}) => {
   bot.getProfile(source[`${source.type}Id`]).then(({data: {displayName}}) => {
     console.log(displayName)
-    bot.replyMessage(replyToken, new Messages().addText(`Selamat Datang di MemeLine, ${displayName}!`).addText({text: 'Cara gampang bikin meme (>.<)'}).commit())
+    bot.replyMessage(replyToken, new Messages().addText(`Selamat Datang di MemeLine, ${displayName}!`).addText({text: 'Cara gampang bikin meme (>.<) \n Silakan masukan tulisan teks pada atas gambar'}).commit())
   })
 })
 
-bot.on('text', ({replyToken, source}) => {
-  bot.replyMessage(replyToken, new Bot.Messages().addText('harambae').commit())
+const saveStateText = (sourceId, field, text) => {
+  return axios.patch(`${config.databaseURL}/state/${sourceId}.json`, {
+    [field]: text
+  }).then(({data}) => {
+    return data;
+  });
+}
+
+const clearState = (sourceId) => {
+  return axios.delete(`${config.databaseURL}/state/${sourceId}.json`).then(({data}) => {
+    return data;
+  });
+}
+
+const checkState = (sourceId) => {
+  return axios.get(`${config.databaseURL}/state/${sourceId}.json`).then(({data}) => {
+    if (!data) {
+      return {state: 'needTextTop', stateData: data}
+    } else if (data.textTop && data.textBottom) {
+      return {state: 'needMemePicture', stateData: data}
+    } else if (data.textTop) {
+      return {state: 'needTextBottom', stateData: data}
+    } else {
+      return {state: 'needTextTop', stateData: data}
+    }
+  })
+}
+
+bot.on('text', ({replyToken, source, source: { type }, message: { text }}) => {
+  const sourceId = source[`${type}Id`];
+  // bot.replyMessage(replyToken, new Bot.Messages().addText(text).commit());
+  // console.log('text', text);
+  checkState(sourceId).then(({state, stateData}) => {
+    switch (state) {
+      case 'needTextTop':
+        saveStateText(sourceId, 'textTop', text).then(() => {
+          bot.replyMessage(replyToken, new Bot.Messages().addText('Silakan masukan tulisan teks pada bawah gambar').commit());  
+        });
+        break;
+      case 'needTextBottom':
+        saveStateText(sourceId, 'textBottom', text).then(() => {
+          bot.replyMessage(replyToken, new Bot.Messages().addText('Silakan upload gambar background').commit());  
+        });
+        break;
+      case 'needMemePicture':
+        bot.replyMessage(replyToken, new Bot.Messages().addText('Silakan upload gambar background').commit());  
+        break;
+    }
+  })
+  
 });
 
 bot.on('image', (e) => {
   let msgs = new Bot.Messages();
   const randomName = uuid.v4()
-  const { message: { id } } = e
-  bot.getContent(id)
-    .then(({data}) => {
-      const filePath = `./buffer/${randomName}.jpg`
-      return new Promise((resolve, reject) => {
-        fs.writeFile(filePath, new Buffer(data, 'binary'), 'binary', (err) => {
-          if (err) reject(err)
-          resolve(filePath)
-        })
-      })
-    })
-    .then(filePath => {
-      return createMeme({picture: filePath, top: 'TOP MEME', bottom: 'AWESOME'})
-    })
-    .then(replyImage => {
-      msgs.addText('RESULT').addImage(replyImage)
-      return bot.replyMessage(e.replyToken, msgs.commit())
-    })
-    .catch(err => console.error(err))
-  // var randomName = uuid.v4();
-  // bot.getContent(e.message.id).then(response => {
-  //   fs.writeFile(`./buffer/${randomName}.jpg`, new Buffer(response.data, 'binary'), 'binary', (err) => {
-  //     if (err) throw err;
-  //       memecanvas.generate(`./buffer/${randomName}.jpg`, 'Top of Meme', 'Bottom of Meme', (error, memefilename) => {
-  //         if (error){
-  //             console.log(error);
-  //         } else {
-  //             console.log(memefilename);
-  //             bucket.upload(memefilename, (err, file) => {
-  //                 if (err) { return console.error(err); }
-  //                 let publicUrl = `https://firebasestorage.googleapis.com/v0/b/${'memeline-76501'}.appspot.com/o/${file.metadata.name}?alt=media`;
-  //                 msgs.addText('HASIL:');
-  //                 msgs.addImage({originalUrl: publicUrl, previewUrl: publicUrl});
-  //                 bot.replyMessage(e.replyToken, msgs.commit());
-  //                 try {
-  //                   fs.unlink(memefilename);
-  //                   fs.unlink(`./buffer/${randomName}.jpg`);
-  //                 } catch(e) {
-  //                   console.log('ERROR DELETING FILE', e);
-  //                 }
-  //             });
-  //         }
-  //       });
-  //   });
-  // });
-});
+  const { message: { id }, source, source: {type} } = e;
+  let sourceId = source[`${type}Id`];
 
-// const getMemeByUser = (sourceId) => {
-//   const currentMemeRef = usersRef.ref(`${sourceId}/currentMeme`)
-//   return currentMemeRef.once('value')
-//     .then((snapshot) => {
-//       const currentMeme = snapshot.val()
-//       const newMeme = {picture: null, top: null, bottom: null}
-//       if (!currentMeme) {
-//         return currentMemeRef.push(newMeme).then(() => Promise.reject(newMeme))
-//       } else {
-//         return Promise.resolve(currentMeme)
-//       }
-//     })
-// }
+  checkState(sourceId).then(({state, stateData}) => {
+    if (state == 'needMemePicture') { 
+      bot.getContent(id)
+        .then(({data}) => {
+          const filePath = `./buffer/${randomName}.jpg`
+          return new Promise((resolve, reject) => {
+            fs.writeFile(filePath, new Buffer(data, 'binary'), 'binary', (err) => {
+              if (err) reject(err)
+              resolve(filePath)
+            })
+          })
+        })
+        .then(filePath => {
+          return createMeme({picture: filePath, top: stateData.textTop, bottom: stateData.textBottom})
+        })
+        .then(replyImage => {
+          clearState(sourceId).then(() => {
+            msgs
+              .addText('Ini dia hasil meme yang berhasil dibuat')
+              .addImage(replyImage)
+              .addText('Silakan masukan tulisan teks pada atas gambar')
+            bot.replyMessage(e.replyToken, msgs.commit());
+          });
+        })
+        .catch(err => console.error(err));
+    } else {
+      bot.replyMessage(e.replyToken, new Bot.Messages().addText('Belum saatnya upload gambar').commit());  
+    }
+  });
+});
 
 const createMeme = ({ picture, top, bottom }) => {
   const randomName = uuid.v4();
