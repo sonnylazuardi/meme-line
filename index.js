@@ -113,7 +113,7 @@ bot.on('image', (e) => {
           })
         })
         .then(filePath => {
-          return createMeme({picture: filePath, top: stateData.textTop, bottom: stateData.textBottom})
+          return createMeme({picture: filePath, top: stateData.textTop, bottom: stateData.textBottom, randomName: randomName})
         })
         .then(replyImage => {
           clearState(sourceId).then(() => {
@@ -131,8 +131,7 @@ bot.on('image', (e) => {
   });
 });
 
-const createMeme = ({ picture, top, bottom }) => {
-  const randomName = uuid.v4();
+const createMeme = ({ picture, top, bottom, randomName }) => {
   return new Promise((resolve, reject) => {
     memecanvas.generate(picture, top, bottom, (
       error,
@@ -149,16 +148,15 @@ const createMeme = ({ picture, top, bottom }) => {
             return reject(err);
           }
           let publicUrl = `https://firebasestorage.googleapis.com/v0/b/${'memeline-76501'}.appspot.com/o/${file.metadata.name}?alt=media`;
-          return resolve({originalUrl: publicUrl, previewUrl: publicUrl})
-          // msgs.addText('HASIL:');
-          // msgs.addImage({ originalUrl: publicUrl, previewUrl: publicUrl });
-          // bot.replyMessage(e.replyToken, msgs.commit());
+        
           try {
             fs.unlink(memefilename);
             fs.unlink(`./buffer/${randomName}.jpg`);
           } catch (e) {
             console.log('ERROR DELETING FILE', e);
           }
+
+          return resolve({originalUrl: publicUrl, previewUrl: publicUrl})
         });
       }
     });
